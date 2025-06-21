@@ -1,0 +1,34 @@
+# Core data processing and analysis
+pandas>=1.5.0
+numpy>=1.21.0
+
+# Geospatial distance calculations
+geopy>=2.3.0
+
+# Machine learning and preprocessing
+# scikit-learn>=1.2.0
+scikit-learn
+
+joblib>=1.2.0
+
+# Deep learning
+torch>=1.13.0
+
+# Data visualization
+matplotlib
+
+# Progress bar visualization
+tqdm>=4.64.0
+
+# Command-line argument parsing
+argparse 
+
+# Optional: High-performance data format support
+# Uncomment if you want to use Parquet format for faster I/O
+# pyarrow>=10.0.0
+# fastparquet>=0.8.0
+
+# Development and testing (optional)
+# pytest>=7.0.0
+# black>=22.0.0
+# flake8>=5.0.0
