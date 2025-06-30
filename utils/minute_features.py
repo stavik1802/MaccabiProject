@@ -104,6 +104,7 @@ SPRINT_THRESHOLD = 7.0
 VHA_THRESHOLD_MS2 = 4.0
 TURN_THRESHOLD_RS = 2.5 # 2.5
 JITTER_METRES = 0.07
+CHUNK_SIZE_SEC = 15 # the num of seconds that each row 
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -296,184 +297,132 @@ def compute_third_flags(df: pd.DataFrame, attacking_positive_x: bool, thirds_bou
     return df
 
 
-def third_time_by_minute(df: pd.DataFrame, frame_duration: float) -> pd.DataFrame:
+def third_time_by_chunk(df: pd.DataFrame, frame_duration: float) -> pd.DataFrame:
     """
-    Calculate the time spent in each third of the field per minute.
-    
+    Calculate the time spent in each third of the field per chunk.
+
     Args:
-        df: DataFrame with minute and third columns
+        df: DataFrame with chunk and third columns
         frame_duration: Duration of each frame in seconds
-        
+
     Returns:
-        DataFrame with minutes and time spent in each third (in seconds)
+        DataFrame with chunks and time spent in each third (in seconds)
     """
-    
-    if "minute" not in df.columns or "third" not in df.columns:
+    if "chunk" not in df.columns or "third" not in df.columns:
         return pd.DataFrame()
-    
-    # Count frames per minute and third
-    counts = df.groupby(["minute", "third"], observed=True).size().unstack(fill_value=0)
-    
-    # Calculate total frames per minute for normalization
-    total_frames_per_minute = counts.sum(axis=1)
-    
-    # Convert to proportions and then to seconds (60 seconds per minute)
-    proportions = counts.div(total_frames_per_minute, axis=0)
-    time_sec = proportions * 60
-    
+
+    counts = df.groupby(["chunk", "third"], observed=True).size().unstack(fill_value=0)
+    total_frames_per_chunk = counts.sum(axis=1)
+    proportions = counts.div(total_frames_per_chunk, axis=0)
+    time_sec = proportions * CHUNK_SIZE_SEC
     time_sec.columns = [f"time_{col}_sec" for col in time_sec.columns]
-    
-    # Verify sums
-    sums = time_sec.sum(axis=1)
-    
+
     return time_sec.reset_index()
+
 
 
 def process_half(df: pd.DataFrame, center, corners, attacking_positive_x: bool, 
                 half_start_time: str,
                 attack_vector: np.ndarray = None,
                 field_bounds: dict[str, float] | None = None,
-                pca = None,heatmap_path=None) -> pd.DataFrame:
+                pca = None, heatmap_path=None) -> pd.DataFrame:
     """
     Process a half of the game data.
-    
-    Args:
-        df: DataFrame containing the player tracking data
-        center: Field center coordinates
-        corners: Field corner coordinates
-        attacking_positive_x: Whether attacking direction is positive X
-        half_start_time: Start time of the half
-        attack_vector: Vector indicating attacking direction
-        field_bounds: Dictionary containing field boundaries with keys: x_min, x_max, y_min, y_max
-        pca: Pre-calculated PCA transformation for coordinate conversion
     """
-    
     df = df[(df["Lat"].abs() > 1) & (df["Lon"].abs() > 1)].reset_index(drop=True)
     if df["Lat"].abs().max() > 360:
         df[["Lat", "Lon"]] *= 1e-6
-    
-    # Parse times with flexible format handling
+
+    # Parse times
     try:
-        # First check if Time is already datetime
         if not pd.api.types.is_datetime64_any_dtype(df["Time"]):
-            # If it's just a time string (HH:MM:SS.S), add today's date
             if ":" in str(df["Time"].iloc[0]) and len(str(df["Time"].iloc[0])) <= 12:
                 today = pd.Timestamp.today().normalize()
                 df["Time"] = pd.to_datetime(today.strftime("%Y-%m-%d ") + df["Time"].astype(str), format="mixed")
             else:
-                # If it's a full datetime string
                 df["Time"] = pd.to_datetime(df["Time"], format="mixed")
     except Exception as e:
         print(f"⚠️ Error processing times: {e}")
         return pd.DataFrame()
 
-    # Parse half start time
     try:
         if ":" in half_start_time and len(half_start_time) <= 12:
-            # If it's just a time string (HH:MM:SS.S), add today's date
             today = pd.Timestamp.today().normalize()
             half_start = pd.to_datetime(today.strftime("%Y-%m-%d ") + half_start_time, format="mixed")
         else:
-            # If it's a full datetime string
             half_start = pd.to_datetime(half_start_time, format="mixed")
     except Exception as e:
         print(f"⚠️ Error processing half start time: {e}")
         return pd.DataFrame()
-    
+
     if df.empty:
         print("❌ Empty DataFrame after initial processing")
         return pd.DataFrame()
 
-    # Calculate minutes since half start, ensuring we only compare times within the same day
+    # Time alignment
     df["seconds"] = (df["Time"] - df["Time"].dt.normalize()) / pd.Timedelta(seconds=1)
     half_start_seconds = (half_start - half_start.normalize()) / pd.Timedelta(seconds=1)
-    
-    minutes_offset = (df["seconds"].iloc[0] - half_start_seconds) / 60
-    
-    df["minute"] = ((df["seconds"] - half_start_seconds) / 60).astype(int) + 1
-    
+    chunk_offset = (df["seconds"].iloc[0] - half_start_seconds) / CHUNK_SIZE_SEC
+    df["chunk"] = ((df["seconds"] - half_start_seconds) / CHUNK_SIZE_SEC).astype(int) + 1
+
     coords = list(zip(df["Lon"], df["Lat"]))
     inst_dist = [0.0]
     movement_vectors = [(0.0, 0.0)]
     duration_sec = (df["Time"].iloc[-1] - df["Time"].iloc[0]).total_seconds()
     sample_rate = len(df) / duration_sec
     frame_duration = 1 / sample_rate
-    
+
     for i in range(1, len(coords)):
         dist = geodesic(coords[i - 1], coords[i]).meters
         dist = dist if dist >= JITTER_METRES else 0.0
         inst_dist.append(dist)
-        dx = df["Lon"].iloc[i] - df["Lon"].iloc[i - 1]   # Longitude = X
-        dy = df["Lat"].iloc[i] - df["Lat"].iloc[i - 1]   # Latitude = Y
-
+        dx = df["Lon"].iloc[i] - df["Lon"].iloc[i - 1]
+        dy = df["Lat"].iloc[i] - df["Lat"].iloc[i - 1]
         movement_vectors.append((dx, dy) if dist >= 0.0 else (0.0, 0.0))
 
     df["inst_dist_m"] = inst_dist
     df["movement_dx"] = [v[0] for v in movement_vectors]
     df["movement_dy"] = [v[1] for v in movement_vectors]
 
-    # Local coordinates conversion
     df, pca = gps_to_local_xy(df, center, corners, pca)
-    
-    
-    # Calculate thirds bounds from field_bounds
-    if field_bounds is not None and isinstance(field_bounds, dict):
+
+    # Thirds bounds
+    if field_bounds and isinstance(field_bounds, dict):
         x_min = field_bounds.get("x_min")
         x_max = field_bounds.get("x_max")
         if x_min is not None and x_max is not None:
             x_range = x_max - x_min
             x_mid1 = x_min + x_range / 3
             x_mid2 = x_min + 2 * x_range / 3
-            thirds_bounds = (x_min, x_mid1, x_mid2)
         else:
-            # Fallback to calculating from data if field_bounds missing required values
-            x_min = df["X"].min()
-            x_max = df["X"].max()
+            x_min, x_max = df["X"].min(), df["X"].max()
             x_range = x_max - x_min
             x_mid1 = x_min + x_range / 3
             x_mid2 = x_min + 2 * x_range / 3
-            thirds_bounds = (x_min, x_mid1, x_mid2)
     else:
-        # Fallback to calculating from data if field_bounds not provided
-        x_min = df["X"].min()
-        x_max = df["X"].max()
+        x_min, x_max = df["X"].min(), df["X"].max()
         x_range = x_max - x_min
         x_mid1 = x_min + x_range / 3
         x_mid2 = x_min + 2 * x_range / 3
-        thirds_bounds = (x_min, x_mid1, x_mid2)
-    
-    # Compute thirds
-    df = compute_third_flags(df, attacking_positive_x, thirds_bounds, x_max)
-    
-    # Project normalized movement onto attack vector
-    if attack_vector is not None:
-        # Create a 1-second timestamp floor
-        df["ts_floor"] = df["Time"].dt.floor("1s")
+    thirds_bounds = (x_min, x_mid1, x_mid2)
 
-        # Aggregate dx, dy per second (ignoring zeros)
+    df = compute_third_flags(df, attacking_positive_x, thirds_bounds, x_max)
+
+    # Attack direction projection
+    if attack_vector is not None:
+        df["ts_floor"] = df["Time"].dt.floor("1s")
         grouped = df.groupby("ts_floor")[["movement_dx", "movement_dy"]].mean()
         movement_matrix = grouped.to_numpy()
-
-        # (Optional) If your dx/dy are in degrees, convert to radians (or skip if already local meters)
-        # movement_matrix = np.radians(movement_matrix)
-
         norms = np.linalg.norm(movement_matrix, axis=1, keepdims=True)
         norms[norms == 0] = 1e-9
         movement_unit = movement_matrix / norms
-
-        # Project to attack vector
         dir_proj = (movement_unit @ attack_vector).flatten()
         is_attack_sec = dir_proj >= 0
-
-        # Map back to full 10Hz sample set
         attack_map = pd.Series(is_attack_sec, index=grouped.index)
         df["is_attack"] = df["ts_floor"].map(attack_map).fillna(False)
         df["is_defense"] = ~df["is_attack"]
-
         df.drop(columns="ts_floor", inplace=True)
-
     else:
-        # If no attack vector provided, use X coordinate direction
         df["is_attack"] = df["X"] >= 0 if attacking_positive_x else df["X"] < 0
         df["is_defense"] = ~df["is_attack"]
 
@@ -489,42 +438,31 @@ def process_half(df: pd.DataFrame, center, corners, attacking_positive_x: bool,
     from scipy.signal import medfilt
     df["ang_vel_mag"] = medfilt(df["ang_vel_mag"], kernel_size=5)
 
-    
-
     df["hsr_flag"] = (speed > HSR_THRESHOLD_MS)
     df["hsr_m"] = df["hsr_flag"] * df["inst_dist_m"]
     df["vha_count_1s"] = (df["acc_mag"] > VHA_THRESHOLD_MS2).rolling(SAMPLE_RATE_HZ, min_periods=1).mean()
     df["avg_jerk_1s"] = df["jerk"].rolling(SAMPLE_RATE_HZ, min_periods=1).mean()
 
     from scipy.ndimage import label
-
-    # Label contiguous regions where ang_vel_mag > threshold
     turn_flag = df["ang_vel_mag"] > TURN_THRESHOLD_RS
     labels, num_labels = label(turn_flag)
-
-    # Filter out short bursts
     valid_turn_start = np.zeros_like(turn_flag, dtype=int)
     for lbl in range(1, num_labels + 1):
         idx = np.where(labels == lbl)[0]
-        if len(idx) >= 30:  # 0.3 sec at 100Hz
-            valid_turn_start[idx[0]] = 1  # count only once
-
+        if len(idx) >= 30:
+            valid_turn_start[idx[0]] = 1
     df["turns_per_sec"] = pd.Series(valid_turn_start).rolling(SAMPLE_RATE_HZ, min_periods=1).mean()
-
 
     pl = np.sqrt(df["Accl X"].diff()**2 + df["Accl Y"].diff()**2 + df["Accl Z"].diff()**2)
     df["playerload_1s"] = pl.rolling(SAMPLE_RATE_HZ, min_periods=1).mean()
 
-
-    # --- Sprint detection ---
     df["sprint_flag"] = speed >= SPRINT_THRESHOLD
     df["sprint_start"] = (df["sprint_flag"] & (~df["sprint_flag"].shift(1, fill_value=False)))
     df["sprint_id"] = df["sprint_start"].cumsum()
 
     sprint_lengths = df.groupby("sprint_id")["sprint_flag"].sum()
-    valid_sprint_ids = sprint_lengths[sprint_lengths >= 30].index
+    valid_sprint_ids = sprint_lengths[sprint_lengths >= 20].index
     df["sprint_label"] = df["sprint_id"].isin(valid_sprint_ids).astype(int)
-
     valid_sprint_df = df[df["sprint_label"] == 1]
 
     def classify_direction(group):
@@ -537,43 +475,29 @@ def process_half(df: pd.DataFrame, center, corners, attacking_positive_x: bool,
     df["total_sprints"] = 0
     df["sprint_attack"] = 0
     df["sprint_defense"] = 0
-
     start_rows = valid_sprint_df.groupby("sprint_id").head(1).index
     df.loc[start_rows, "total_sprints"] = 1
-    attack_starts = valid_sprint_df[valid_sprint_df["sprint_id"].isin(attack_ids)].groupby("sprint_id").head(1).index
-    defense_starts = valid_sprint_df[valid_sprint_df["sprint_id"].isin(defense_ids)].groupby("sprint_id").head(1).index
-    df.loc[attack_starts, "sprint_attack"] = 1
-    df.loc[defense_starts, "sprint_defense"] = 1
+    df.loc[valid_sprint_df[valid_sprint_df["sprint_id"].isin(attack_ids)].groupby("sprint_id").head(1).index, "sprint_attack"] = 1
+    df.loc[valid_sprint_df[valid_sprint_df["sprint_id"].isin(defense_ids)].groupby("sprint_id").head(1).index, "sprint_defense"] = 1
 
-    # Calculate time spent in each speed zone - normalize to sum to 60 seconds per minute
-    frame_duration = 1 / SAMPLE_RATE_HZ
-    
-    # First create the speed zone flags
     df["is_walking"] = ((speed >= 0) & (speed < 2)).astype(float)
     df["is_jogging"] = ((speed >= 2) & (speed < 4)).astype(float)
     df["is_running"] = ((speed >= 4) & (speed < 7)).astype(float)
     df["is_sprinting"] = (speed >= SPRINT_THRESHOLD).astype(float)
-    
-    # Calculate frames per minute for normalization
-    df["frames_in_minute"] = df.groupby("minute")["is_walking"].transform("count")
-    df["time_per_frame"] = 60 / df["frames_in_minute"]
 
-    # Calculate normalized times
+    df["frames_in_chunk"] = df.groupby("chunk")["is_walking"].transform("count")
+    df["time_per_frame"] = CHUNK_SIZE_SEC / df["frames_in_chunk"]
+
     df["walk_time"] = df["is_walking"] * df["time_per_frame"]
     df["jog_time"] = df["is_jogging"] * df["time_per_frame"]
     df["run_time"] = df["is_running"] * df["time_per_frame"]
     df["sprint_time"] = df["is_sprinting"] * df["time_per_frame"]
 
-    # Calculate attack/defense metrics based on position
     df["dist_attack"] = df["inst_dist_m"] * df["is_attack"]
     df["dist_defense"] = df["inst_dist_m"] * df["is_defense"]
-    
-    # Calculate attack/defense times using the same normalization
     df["time_attack"] = df["is_attack"] * df["time_per_frame"]
-    df["time_defense"] = df["is_defense"] * df["time_per_frame"] 
+    df["time_defense"] = df["is_defense"] * df["time_per_frame"]
 
-
-    #positive and negative acc
     df["pos_acc_attack"] = ((df["acc_long"] > VHA_THRESHOLD_MS2) & df["is_attack"]).cumsum()
     df["neg_acc_attack"] = ((df["acc_long"] < -VHA_THRESHOLD_MS2) & df["is_attack"]).cumsum()
     df["accel_decel_balance_attack"] = df["pos_acc_attack"] - df["neg_acc_attack"]
@@ -582,71 +506,63 @@ def process_half(df: pd.DataFrame, center, corners, attacking_positive_x: bool,
     df["neg_acc_defense"] = ((df["acc_long"] < -VHA_THRESHOLD_MS2) & df["is_defense"]).cumsum()
     df["accel_decel_balance_defense"] = df["pos_acc_defense"] - df["neg_acc_defense"]
 
-   
-    # Create flags for each third
     df["is_attacking_third"] = (df["third"] == "attacking").astype(float)
     df["is_middle_third"] = (df["third"] == "middle").astype(float)
     df["is_defending_third"] = (df["third"] == "defending").astype(float)
-
-    # Use the same normalization as for speed zones
     df["attacking_third_time"] = df["is_attacking_third"] * df["time_per_frame"]
     df["middle_third_time"] = df["is_middle_third"] * df["time_per_frame"]
     df["defending_third_time"] = df["is_defending_third"] * df["time_per_frame"]
-    
-    #if want to see the field thirds visualization of a player uncomment the line below
-    # plot_field_thirds(df, title="First Half: Field Thirds Visualization", thirds_bounds=thirds_bounds, attacking_positive_x=attacking_positive_x)
-    
-    #if want to see the heatmap of a player uncomment the lines below
-    # if heatmap_path:
-    #     if attacking_positive_x:
-    #         plot_one_half_heatmap_from_xy(df, save_path=heatmap_path)
-    #     else:
-    #         plot_one_half_heatmap_from_xy(df, save_path=heatmap_path,flip=True)
-    minute_stats = df.groupby("minute").agg({
-        "inst_dist_m": "sum",
-        "Speed (m/s)": ["mean", "max"],
-        "hsr_m": "sum",
-        "vha_count_1s": "sum",
-        "avg_jerk_1s": "mean",
-        "turns_per_sec": "sum",
-        "playerload_1s": "sum",
-        "walk_time": "sum",
-        "jog_time": "sum",
-        "run_time": "sum",
-        "sprint_time": "sum",
-        "accel_decel_balance_attack": "last",
-        "accel_decel_balance_defense": "last",
-        "total_sprints": "sum",
-        "sprint_attack": "sum",
-        "sprint_defense": "sum",
-        "dist_attack": "sum",
-        "dist_defense": "sum",
-        "time_attack": "sum",
-        "time_defense": "sum",
-        "attacking_third_time": "sum",
-        "middle_third_time": "sum",
-        "defending_third_time": "sum",
+
+    chunk_stats = df.groupby("chunk").agg({
+        "inst_dist_m": ["sum"],
+        "Speed (m/s)": ["mean"],
+        "hsr_m": ["sum"],
+        "vha_count_1s": ["sum"],
+        "avg_jerk_1s": ["mean"],
+        "turns_per_sec": ["sum"],
+        "playerload_1s": ["sum"],
+        "walk_time": ["sum"],
+        "jog_time": ["sum"],
+        "run_time": ["sum"],
+        "sprint_time": ["sum"],
+        "total_sprints": ["sum"],
+        "sprint_attack": ["sum"],
+        "sprint_defense": ["sum"],
+        "dist_attack": ["sum"],
+        "dist_defense": ["sum"],
+        "time_attack": ["sum"],
+        "time_defense": ["sum"],
+        "attacking_third_time": ["sum"],
+        "middle_third_time": ["sum"],
+        "defending_third_time": ["sum"],
     }).reset_index()
 
-    # Fix column names - handle both single and multi-level columns
-    if isinstance(minute_stats.columns, pd.MultiIndex):
-        # For multi-level columns (from agg with lists)
-        minute_stats.columns = ["minute" if col[0] == "minute" else f"{col[0]}_{col[1]}" for col in minute_stats.columns]
+    if isinstance(chunk_stats.columns, pd.MultiIndex):
+        def rename_column(col):
+            if col[0] == "chunk":
+                return "chunk"
+            agg = col[1]
+            suffix = "_mean" if agg == "mean" else "_max" if agg == "max" else "_sum"
+            return f"{col[0]}{suffix}"
+
+        chunk_stats.columns = [rename_column(col) for col in chunk_stats.columns]
     else:
-        # For single-level columns
-        minute_stats.columns = [col if col == "minute" else f"{col}_sum" for col in minute_stats.columns]
+        chunk_stats.columns = [col if col == "chunk" else f"{col}_sum" for col in chunk_stats.columns]
 
-    # Verify that times sum to 60 for each minute
-    minute_stats["speed_time_sum"] = minute_stats[["walk_time_sum", "jog_time_sum", "run_time_sum", "sprint_time_sum"]].sum(axis=1)
-    minute_stats["attack_defense_sum"] = minute_stats["time_attack_sum"] + minute_stats["time_defense_sum"]
-    
-    # Clean up verification columns
-    minute_stats = minute_stats.drop(columns=["speed_time_sum", "attack_defense_sum"])
+    for col in chunk_stats.columns:
+        if col == "chunk":
+            continue
+        if col.endswith("_sum"):
+            chunk_stats[col] = chunk_stats[col].cumsum()
+        elif col.endswith("_mean"):
+            chunk_stats[col] = chunk_stats[col].expanding().mean()
+        elif col.endswith("_max"):
+            chunk_stats[col] = chunk_stats[col].cummax()
 
-    # Set minute numbers
-    minute_stats["minute"] = np.arange(1, len(minute_stats) + 1)
+    chunk_stats["chunk"] = np.arange(1, len(chunk_stats) + 1)
 
-    return minute_stats
+    return chunk_stats
+
 
 
 
@@ -668,44 +584,62 @@ def process_player_folder(player_folder: Path, attack_vector: np.ndarray,
     features_first = pd.DataFrame()
     features_second = pd.DataFrame()
     positive_x = True if attack_vector[0] >= 0 else False
-    # Process first half if exists
+
+    # === First Half ===
     if first_file.exists():
         try:
             df_first = pd.read_csv(first_file)
             if not df_first.empty:
-                features_first = process_half(df_first, center, corners, positive_x, 
-                                           half_start_time=first_half_start,
-                                           attack_vector=attack_vector,
-                                           field_bounds=field_bounds, pca=pca,heatmap_path=player_folder / "heatmap.png")
+                features_first = process_half(df_first, center, corners, positive_x,
+                                              half_start_time=first_half_start,
+                                              attack_vector=attack_vector,
+                                              field_bounds=field_bounds, pca=pca,
+                                              heatmap_path=player_folder / "heatmap.png")
         except Exception as e:
             print(f"⚠️ Error processing first half for {player_folder.name}: {e}")
 
-    # Process second half if exists
+    # === Second Half ===
     positive_x = not positive_x
+    chunk_offset = 0
     if second_file.exists():
         try:
             df_second = pd.read_csv(second_file)
             if not df_second.empty:
                 features_second = process_half(df_second, center, corners, positive_x,
-                                            half_start_time=second_half_start,
-                                            attack_vector=-attack_vector,
-                                            field_bounds=field_bounds, pca=pca)
+                                               half_start_time=second_half_start,
+                                               attack_vector=-attack_vector,
+                                               field_bounds=field_bounds, pca=pca)
+                if not features_first.empty:
+                    # Apply chunk offset to second half (start from CHUNK_SIZE_SEC after first)
+                    count_first_half = len(features_first)
+                    chunk_offset = count_first_half
+                    for col in features_second.columns:
+                        if col == "chunk" or col not in features_first.columns:
+                            continue
+                        if col.endswith("_sum"):
+                            features_second[col] += features_first[col].iloc[-1]
+                        elif col.endswith("_mean"):
+                            first_total = features_first[col].iloc[-1] * count_first_half
+                            second_partial = features_second[col] * np.arange(1, len(features_second) + 1)
+                            total_counts = np.arange(1, len(features_second) + 1) + count_first_half
+                            features_second[col] = (first_total + second_partial) / total_counts
+                        elif col.endswith("_max"):
+                            features_second[col] = features_second[col].cummax().clip(lower=features_first[col].iloc[-1])
+
+                # Re-index chunk column to continue smoothly from first half
+                features_second["chunk"] = np.arange(1 + chunk_offset, len(features_second) + 1 + chunk_offset)
+                features_second.to_csv(player_folder / "second_half_features.csv", index=False)
+                print(f"✅ Saved second_half_features.csv for {player_folder.name}")
+
         except Exception as e:
             print(f"⚠️ Error processing second half for {player_folder.name}: {e}")
 
-    # Save whatever features we have
+    # === Save First Half ===
     if not features_first.empty:
         features_first.to_csv(player_folder / "first_half_features.csv", index=False)
         print(f"✅ Saved first_half_features.csv for {player_folder.name}")
 
-    if not features_second.empty:
-        # Adjust second half minutes if we have first half data
-        if not features_first.empty:
-            last_minute_first = features_first["minute"].iloc[-1]
-            features_second["minute"] += last_minute_first
-        features_second.to_csv(player_folder / "second_half_features.csv", index=False)
-        print(f"✅ Saved second_half_features.csv for {player_folder.name}")
-    # Merge whatever features we have
+    # === Merge Features ===
     features_to_merge = []
     if not features_first.empty:
         features_to_merge.append(features_first)
@@ -720,6 +654,7 @@ def process_player_folder(player_folder: Path, attack_vector: np.ndarray,
             print(f"ℹ️ Note: {player_folder.name} only has {'first' if not features_first.empty else 'second'} half data")
     else:
         print(f"⚠️ No valid data found for {player_folder.name}")
+
 
 
 def main(parent_folder: str, cf_csv: str, cb_csv: str, 
@@ -746,9 +681,9 @@ def main(parent_folder: str, cf_csv: str, cb_csv: str,
                                 half_start_time=first_half_start,
                                 attack_vector=attack_vector,
                                 field_bounds=field_bounds, pca=pca)
-
-    total_attack_time = stats_first["attacking_third_time_sum"].sum()
-    total_defense_time =stats_first["defending_third_time_sum"].sum()
+    print(stats_first.columns)
+    total_attack_time = stats_first["attacking_third_time_sum"].iloc[-1]
+    total_defense_time = stats_first["defending_third_time_sum"].iloc[-1]
 
     print(f"➡️  CF total time: attack={total_attack_time:.1f}s, defense={total_defense_time:.1f}s")
 

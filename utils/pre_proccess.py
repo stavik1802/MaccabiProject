@@ -51,10 +51,11 @@ from minute_features import main as process_player_metrics
 from analyze_sub_file import analyze_subs_file
 import pandas as pd
 from datetime import datetime
+from extract_player_data import process_all_players
 import json
 
 # Debug flags for controlling processing steps
-DEBUG_1 = True  # Controls basic metrics processing
+DEBUG_1 = False  # Controls basic metrics processing
 DEBUG = True    # Controls main processing pipeline
 I = 1          # Counter for processing specific games
 
@@ -126,6 +127,7 @@ def pre_proccess(directory_path: str):
     try:
         I = 1
         # Stage 1: Maccabi Haifa player filtering
+        print(directory_path)
         if (DEBUG):
             # process_sofa_score(directory_path)
             print("✅ Maccabi Haifa filtering completed successfully")
@@ -205,16 +207,16 @@ def pre_proccess(directory_path: str):
                 filtered_data_dir = game_folder / "filtered_data_halves"
                 filtered_data_dir.mkdir(parents=True, exist_ok=True)
                 
-                filter_data_main(
-                    str(basic_metrics_dir),
-                    str(filtered_data_dir),
-                    first_half.start.time(),
-                    first_half.end.time(),
-                    second_half.start.time(),
-                    second_half.end.time(),
-                    first_half_runners,
-                    subs_analysis
-                )
+                # filter_data_main(
+                #     str(basic_metrics_dir),
+                #     str(filtered_data_dir),
+                #     first_half.start.time(),
+                #     first_half.end.time(),
+                #     second_half.start.time(),
+                #     second_half.end.time(),
+                #     first_half_runners,
+                #     subs_analysis
+                # )
             
             # Stage 7: Infer field orientation and dimensions
             if (DEBUG):
@@ -241,9 +243,14 @@ def pre_proccess(directory_path: str):
                     elif "CB" in runner:
                         cb_dir = filtered_data_dir / f"basic_metrics_{game_folder.name[:10]}-{runner}-Entire-Session"
                         cb_file = cb_dir / "first_half.csv"
+                if cf_file is None:
+                     print("no cf file found, trying to find AM")
+                     for runner in first_half_runners:
+                        if "AM" in runner:
+                            cf_dir = filtered_data_dir / f"basic_metrics_{game_folder.name[:10]}-{runner}-Entire-Session"
+                            cf_file = cf_dir / "first_half.csv"
                 print("this is the cf_file", cf_file)
                 print("this is the cb_file", cb_file)
-                
                 # Process player metrics if both CF and CB files are available
                 if cf_file and cf_file.exists() and cb_file and cb_file.exists():
                     process_player_metrics(
@@ -266,6 +273,7 @@ def pre_proccess(directory_path: str):
             # break  # Remove this if you want to process all games
 
         print("\n✅ All games processed successfully")
+        process_all_players(directory_path)
         
     except Exception as e:
         print(f"❌ Error during pre-processing: {e}")
