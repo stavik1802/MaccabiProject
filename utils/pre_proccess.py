@@ -55,7 +55,7 @@ from extract_player_data import process_all_players
 import json
 
 # Debug flags for controlling processing steps
-DEBUG_1 = False  # Controls basic metrics processing
+DEBUG_1 = True  # Controls basic metrics processing
 DEBUG = True    # Controls main processing pipeline
 I = 1          # Counter for processing specific games
 
@@ -207,16 +207,16 @@ def pre_proccess(directory_path: str):
                 filtered_data_dir = game_folder / "filtered_data_halves"
                 filtered_data_dir.mkdir(parents=True, exist_ok=True)
                 
-                # filter_data_main(
-                #     str(basic_metrics_dir),
-                #     str(filtered_data_dir),
-                #     first_half.start.time(),
-                #     first_half.end.time(),
-                #     second_half.start.time(),
-                #     second_half.end.time(),
-                #     first_half_runners,
-                #     subs_analysis
-                # )
+                filter_data_main(
+                    str(basic_metrics_dir),
+                    str(filtered_data_dir),
+                    first_half.start.time(),
+                    first_half.end.time(),
+                    second_half.start.time(),
+                    second_half.end.time(),
+                    first_half_runners,
+                    subs_analysis
+                )
             
             # Stage 7: Infer field orientation and dimensions
             if (DEBUG):
