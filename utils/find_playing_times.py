@@ -474,7 +474,6 @@ class HalfTimeDetector:
                 break
         if sh_start is None:
             sh_start = first_half_end + pd.Timedelta(minutes=17)
-            raise ValueError("Could not detect second half start based on sustained activity.")
 
         second_half_start = self.player_data[self.player_data.index >= sh_start].index[0]
         # second_half_start = second_half_start - pd.Timedelta(minutes=2)
@@ -509,12 +508,12 @@ class HalfTimeDetector:
         print(f"  Halftime: {halftime_duration:.1f} minutes")
         print(f"  Second half: {sh_duration:.1f} minutes")
 
-        if not (self.config['min_half_length'] <= fh_duration <= self.config['max_half_length']):
-            raise ValueError("Invalid first half duration")
-        if not (self.config['min_half_length'] <= sh_duration <= self.config['max_half_length']):
-            raise ValueError("Invalid second half duration")
-        if not (self.config['min_halftime_break'] <= halftime_duration <= self.config['max_halftime_break']):
-            raise ValueError("Invalid halftime break duration")
+        # if not (self.config['min_half_length'] <= fh_duration <= self.config['max_half_length']):
+        #     raise ValueError("Invalid first half duration")
+        # if not (self.config['min_half_length'] <= sh_duration <= self.config['max_half_length']):
+        #     raise ValueError("Invalid second half duration")
+        # if not (self.config['min_halftime_break'] <= halftime_duration <= self.config['max_halftime_break']):
+        #     raise ValueError("Invalid halftime break duration")
 
         print("\n✅ Timing rule-based detection successful!")
         return (

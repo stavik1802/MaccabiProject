@@ -207,7 +207,7 @@ def main():
         print("  python extract_player_data.py --list-players")
         sys.exit(1)
     
-    run1_path = "run1"
+    run1_path = "23-24-run"
     
     # Check if run1 directory exists
     if not os.path.exists(run1_path):
