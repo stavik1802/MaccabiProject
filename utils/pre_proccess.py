@@ -58,8 +58,6 @@ import calendar
 import sys
 sys.path.append('..')
 from filter_subs_names import replace_players_in_folder
-from feature_rename_map import feature_rename_map
-from rename_features_names import rename_game_feature_columns
 
 # Debug flags for controlling processing steps
 DEBUG_1 = True  # Controls basic metrics processing
@@ -406,12 +404,6 @@ def pre_proccess(directory_path: str):
                         first_half.start.strftime('%H:%M:%S.%f'),
                         second_half.start.strftime('%H:%M:%S.%f')
                     )
-                    # Now, for each player's directory in filtered_data_dir, rename features using the feature_rename_map
-                    for player_dir in filtered_data_dir.iterdir():
-                        if player_dir.is_dir():
-                            if (DEBUG):
-                                print(f"Renaming features in {player_dir.name}...")
-                            rename_game_feature_columns(player_dir, feature_rename_map)
                     print("✅ Player metrics processing completed")
                 else:
                     print("⚠️ Could not find CF/CB files in first_half_runners")
