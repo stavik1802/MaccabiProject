@@ -53,11 +53,6 @@ import pandas as pd
 from datetime import datetime
 from extract_player_data import process_all_players
 import json
-import shutil
-import calendar
-import sys
-sys.path.append('..')
-from filter_subs_names import replace_players_in_folder
 
 # Debug flags for controlling processing steps
 DEBUG_1 = True  # Controls basic metrics processing
@@ -95,82 +90,6 @@ def parse_time(s):
     except ValueError:
         raise ValueError(f"Invalid time '{s}' – must be HH:MM:SS.fff (e.g., 18:58:00.0)")
 
-def copy_lineup_files_to_games_data(lineups_extract_path: str, games_data_dir_path: str):
-    """
-    Copy substitutes CSV files from lineups_extract to matching game directories based on date.
-    
-    This function matches CSV files ending with '_substitutes.csv' in lineups_extract (format: dd-mm-yyyy_..._substitutes.csv) 
-    with game directories (format: yyyy-mm-dd-Month dd, yyyy-RawDataExtended/) 
-    and copies the files to the corresponding directories, renaming them to 'filtered_subs.csv'.
-    
-    Args:
-        lineups_extract_path (str): Path to the lineups_extract directory
-        games_data_dir_path (str): Path to the games data directory containing match directories
-        
-    Returns:
-        None: Files are copied directly to target directories
-        
-    Example:
-        >>> copy_lineup_files_to_games_data("./lineups_extract", "./run1")
-        ✅ Copied 19-08-2023_M. Petach Tikva_M. Haifa_substitutes.csv to 2023-08-19-August 19, 2023-RawDataExtended/ as filtered_subs.csv
-    """
-    lineups_path = Path(lineups_extract_path)
-    games_data_dir = Path(games_data_dir_path)
-    
-    if not lineups_path.exists():
-        print(f"⚠️ Lineups extract path does not exist: {lineups_extract_path}")
-        return
-    
-    if not games_data_dir.exists():
-        print(f"⚠️ Games data directory does not exist: {games_data_dir_path}")
-        return
-    
-    # Get only substitutes CSV files from lineups_extract
-    csv_files = list(lineups_path.glob("*_substitutes.csv"))
-    
-    # Get all game directories from games data directory
-    game_dirs = [d for d in games_data_dir.iterdir() if d.is_dir()]
-    
-    print(f"📁 Found {len(csv_files)} substitutes CSV files in lineups_extract")
-    print(f"📁 Found {len(game_dirs)} game directories in games data directory")
-    
-    copied_count = 0
-    
-    for csv_file in csv_files:
-        # Parse date from CSV filename (format: dd-mm-yyyy_...)
-        try:
-            date_part = csv_file.name.split('_')[0]  # Get "dd-mm-yyyy" part
-            csv_date = datetime.strptime(date_part, "%d-%m-%Y")
-            
-            # Look for matching directory in games data directory
-            target_dir = None
-            for game_dir in game_dirs:
-                # Parse date from directory name (format: yyyy-mm-dd-...)
-                try:
-                    dir_date_part = game_dir.name.split('-')[:3]  # Get ["yyyy", "mm", "dd"]
-                    dir_date_str = "-".join(dir_date_part)  # "yyyy-mm-dd"
-                    dir_date = datetime.strptime(dir_date_str, "%Y-%m-%d")
-                    
-                    if csv_date.date() == dir_date.date():
-                        target_dir = game_dir
-                        break
-                except (ValueError, IndexError) as e:
-                    continue  # Skip directories that don't match expected format
-            
-            if target_dir:
-                # Copy the CSV file to the target directory with the new name 'filtered_subs.csv'
-                target_file = target_dir / "filtered_subs.csv"
-                shutil.copy2(csv_file, target_file)
-                print(f"✅ Copied {csv_file.name} to {target_dir.name}/ as filtered_subs.csv")
-                copied_count += 1
-            else:
-                print(f"⚠️ No matching directory found for {csv_file.name} (date: {csv_date.strftime('%Y-%m-%d')})")
-                
-        except (ValueError, IndexError) as e:
-            print(f"❌ Error parsing date from {csv_file.name}: {e}")
-    
-    print(f"📊 Successfully copied {copied_count} out of {len(csv_files)} substitutes CSV files")
-
 def pre_proccess(directory_path: str):
     """
     Pre-process all game data in the specified directory.
@@ -207,26 +126,6 @@ def pre_proccess(directory_path: str):
     """
     try:
         I = 1
-        
-        # Stage 0: Process lineups_extract directory
-        print("🔄 Processing lineups_extract directory...")
-        parent_path = Path(directory_path)
-        lineups_extract_path = parent_path.parent / "lineups_extract"
-        games_data_dir_path = parent_path.parent / "run1"
-        
-        # Replace player names in CSV files
-        if lineups_extract_path.exists():
-            print("📝 Replacing player names in lineups_extract...")
-            replace_players_in_folder(str(lineups_extract_path))
-            print("✅ Player name replacement completed")
-            
-            # Copy updated CSV files to matching game directories
-            print("📋 Copying CSV files to matching game directories...")
-            copy_lineup_files_to_games_data(str(lineups_extract_path), str(games_data_dir_path))
-            print("✅ Substitutions CSV files copying completed")
-        else:
-            print(f"⚠️ Lineups extract directory not found: {lineups_extract_path}")
-        
         # Stage 1: Maccabi Haifa player filtering
         print(directory_path)
         if (DEBUG):
