@@ -119,7 +119,7 @@ def find_player_merged_features(run1_path, player_code):
     return player_files
 
 
-def copy_player_files(player_files, player_code, output_base_dir="data_per_player"):
+def copy_player_files(player_files, player_code, output_base_dir="player_data"):
     """
     Copy player files to a folder named after the player code
     

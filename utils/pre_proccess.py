@@ -171,49 +171,6 @@ def copy_lineup_files_to_games_data(lineups_extract_path: str, games_data_dir_pa
     
     print(f"📊 Successfully copied {copied_count} out of {len(csv_files)} substitutes CSV files")
 
-def create_data_per_game_from_player_data(directory_path: str):
-    """
-    Create a data_per_game directory with per-matchday subdirectories, each containing merged_features_<playercode>.csv
-    for every player who participated in that match, using the files from data_per_player.
-    """
-    parent_path = Path(directory_path).parent
-    data_per_player_dir = parent_path / "data_per_player"
-    data_per_game_dir = parent_path / "data_per_game"
-
-    print(f"data_per_player_dir: {data_per_player_dir}")
-    print(f"data_per_game_dir: {data_per_game_dir}")
-
-    if not data_per_player_dir.exists():
-        print(f"⚠️ data_per_player directory not found: {data_per_player_dir}")
-        return
-
-    data_per_game_dir.mkdir(exist_ok=True)
-
-    # Collect all player directories
-    for player_dir in data_per_player_dir.iterdir():
-        if not player_dir.is_dir():
-            continue
-        player_code = player_dir.name
-        print(f"Processing player: {player_code}")
-        # Find all merged_features_*.csv files for this player
-        for csv_file in player_dir.glob("merged_features_*.csv"):
-            print(f"  Found file: {csv_file.name}")
-            # Extract match date from filename
-            parts = csv_file.name.split('_')
-            print(f"    Filename parts: {parts}")
-            if len(parts) != 3:
-                print(f"⚠️ Unexpected filename format: {csv_file.name}")
-                continue
-            # Filename format: merged_features_yyyy-mm-dd.csv
-            match_date = parts[2].removesuffix('.csv')
-            print(f"    Intended matchday_dir: {match_date}")
-            matchday_dir = data_per_game_dir / match_date
-            matchday_dir.mkdir(exist_ok=True)
-            dest_file = matchday_dir / f"merged_features_{player_code}.csv"
-            print(f"    Copying {csv_file} to {dest_file}")
-            shutil.copy2(csv_file, dest_file)
-    print(f"✅ data_per_game directory created and populated at {data_per_game_dir}")
-
 def pre_proccess(directory_path: str):
     """
     Pre-process all game data in the specified directory.
@@ -418,7 +375,6 @@ def pre_proccess(directory_path: str):
 
         print("\n✅ All games processed successfully")
         process_all_players(directory_path)
-        create_data_per_game_from_player_data(directory_path)
         
     except Exception as e:
         print(f"❌ Error during pre-processing: {e}")
@@ -430,11 +386,3 @@ if __name__ == "__main__":
         print("Example: python pre_proccess.py ./match_data")
     else:
         pre_proccess(sys.argv[1])
-
-
-# if __name__ == "__main__":
-#     import sys
-#     if len(sys.argv) == 3 and sys.argv[1] == "--game-data":
-#         create_data_per_game_from_player_data(sys.argv[2])
-#     else:
-#         print("Usage: python pre_proccess.py --game-data <directory_path>")
