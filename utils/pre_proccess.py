@@ -430,3 +430,11 @@ if __name__ == "__main__":
         print("Example: python pre_proccess.py ./match_data")
     else:
         pre_proccess(sys.argv[1])
+
+
+# if __name__ == "__main__":
+#     import sys
+#     if len(sys.argv) == 3 and sys.argv[1] == "--game-data":
+#         create_data_per_game_from_player_data(sys.argv[2])
+#     else:
+#         print("Usage: python pre_proccess.py --game-data <directory_path>")
