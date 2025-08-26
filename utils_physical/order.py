@@ -1,3 +1,4 @@
+"""Reorder per-player feature files by half and standardized date pattern under player_data/."""
 import os
 import re
 from pathlib import Path

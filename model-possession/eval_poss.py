@@ -1,3 +1,28 @@
+"""Evaluate the grouped-features CatBoost possession model on held-out games/windows.
+
+Purpose:
+- Mirror the training-time group aggregation to generate features and evaluate a saved model
+  using MAE/RMSE/R2 and diagnostic plots.
+
+Inputs:
+- Directory with game folders containing per-player 5‑minute window CSVs (merged_features_*.csv)
+- Ground-truth possession per window (poss.csv) when available
+- A trained CatBoostRegressor saved via joblib
+
+Workflow:
+- Parse player position from filename → map to group (G1..G4)
+- Aggregate per-window features by group (means + counts)
+- Concatenate into a row per window and predict possession
+- Compare predictions against ground truth and compute metrics
+
+Outputs:
+- Metrics printed and saved (CSV)
+- Plots comparing predicted vs. actual possession
+
+Notes:
+- POS2GROUP mapping must match the training file.
+- Ensure independent 5‑minute windows preprocessing was applied to player files.
+"""
 #!/usr/bin/env python3
 # Evaluate the grouped-features CatBoost possession model
 # Mirrors the training pipeline's per-group aggregation (means + counts)

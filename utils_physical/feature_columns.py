@@ -1,3 +1,4 @@
+"""Feature column names used for physical modeling and preprocessing."""
 FEATURE_COLUMNS = [
     "minute",
     "inst_dist_m_sum",

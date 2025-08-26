@@ -1,3 +1,4 @@
+"""Split per-game CSVs into train and eval sets with an 80/20 split per game."""
 import os
 import shutil
 import random

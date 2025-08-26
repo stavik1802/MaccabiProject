@@ -1,3 +1,4 @@
+"""Compute and summarize player play-time metrics from physical feature CSVs."""
 import pandas as pd
 import sys
 from pathlib import Path

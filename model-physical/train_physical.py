@@ -1,4 +1,21 @@
-# this is the model we choose for physical features prediction
+"""
+Train a TCN to forecast per-player 15s physical features, then demo an
+autoregressive rollout on one eval file.
+
+• Data: per-player CSVs with a 'chunk' column and all target_cols.
+• Preprocess: per-file StandardScaler on target_cols; build sliding windows
+  (input_window=130) to predict the next chunk (predict_ahead=1).
+• Model: Keras TCN → Dropout → Dense → Dropout → Dense (multi-target, MSE).
+• Training: concat sequences from all training CSVs, val_split=0.2, early stopping.
+• Save: model → saved_model/player_tcn_model.keras.
+
+• Eval demo: pick one CSV (len≥200), fit its own scaler, roll out N_steps=40
+  autoregressively, inverse-transform, and plot inst_dist_m_sum
+  to inst_dist_m_sum_autoregressive.png.
+
+Edit paths: player_data_root / eval_data_root.
+"""
+
 import os
 import re
 import numpy as np

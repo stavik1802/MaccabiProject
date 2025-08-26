@@ -1,3 +1,4 @@
+"""Build independent 5‑minute windows from cumulative player data while respecting substitutions."""
 import pandas as pd
 from pathlib import Path
 import math

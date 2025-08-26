@@ -1,4 +1,4 @@
-# this script creates the games data for each player 
+"""Create per-game folders and copy raw files into a standardized games tree."""
 import os
 import shutil
 from datetime import datetime

@@ -1,3 +1,4 @@
+"""Scrape SofaScore lineups and substitutions for a match and save structured CSVs."""
 # open website with selenium
 import pandas as pd
 from selenium import webdriver

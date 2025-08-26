@@ -1,3 +1,30 @@
+"""Evaluate substitution scenarios by replacing players with group-average profiles and
+measure predicted possession impact.
+
+Purpose:
+- Quantify how substituting a specific starter with a group-average player (G1..G4) changes
+  5‑minute possession predictions across game windows.
+
+Inputs:
+- Root folder of games containing independent 5‑minute per‑player feature CSVs
+  (e.g., merged_features_<POS>_<ID>.csv)
+- Optional true possession per window (poss.csv) for calibration/validation
+- Pretrained possession model (joblib) with the same POS2GROUP mapping as training
+
+Workflow:
+- Build per-window features from raw player-level rows
+- For each player and window, form scenarios by swapping the player’s features with the
+  average profile of a chosen group (G1..G4)
+- Predict possession for baseline and each scenario and compute delta
+
+Outputs:
+- Per-window CSVs with baseline, scenario predictions, and deltas
+- Aggregated metrics summarizing the impact per player and group
+
+Notes:
+- Ensure windowing and feature naming conventions match training/evaluation pipelines.
+- Group-average profiles must be prepared consistently with training data.
+"""
 # subs_eval_clean.py
 # Analyze impact of substituting each player with an average player on predicted possession
 # Uses dynamic feature discovery; no manual remapping of _sum/_mean

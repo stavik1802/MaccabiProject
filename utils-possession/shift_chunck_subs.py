@@ -1,4 +1,4 @@
-# shifts players features into independent chunks for model of possession prediction
+"""Shift cumulative per-player features into independent 5‑minute chunks for possession modeling."""
 
 from re import S
 import pandas as pd

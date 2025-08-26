@@ -1,3 +1,4 @@
+"""Visualization utilities for physical modeling: learning curves and prediction vs. truth plots."""
 import matplotlib.pyplot as plt
 
 def plot_learning_curves(train_losses, val_losses, save_path=None):

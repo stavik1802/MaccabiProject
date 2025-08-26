@@ -1,3 +1,4 @@
+"""Create bar plots from experiment CSVs (e.g., MAE at a target minute vs input window)."""
 #!/usr/bin/env python3
 # Make a bar plot of MAE@70 vs input window from the existing CSV.
 

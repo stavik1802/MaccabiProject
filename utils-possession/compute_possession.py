@@ -1,3 +1,4 @@
+"""Compute team possession over time from event logs; utilities for cumulative possession computation."""
 # import pandas as pd
 # import argparse
 

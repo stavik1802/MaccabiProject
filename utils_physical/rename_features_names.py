@@ -1,3 +1,4 @@
+"""Utilities to rename feature columns in CSVs based on a provided mapping."""
 import pandas as pd
 from typing import Dict, Union
 from pathlib import Path

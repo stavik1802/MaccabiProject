@@ -1,3 +1,4 @@
+"""Generate combined datasets including perturbed copies for experimentation."""
 #!/usr/bin/env python3
 # Build a single output tree that contains originals AND perturbed copies together.
 

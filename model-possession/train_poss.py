@@ -1,3 +1,30 @@
+"""Train a grouped-features CatBoost regressor to predict 5‑minute possession.
+
+Purpose:
+- Learn a mapping from aggregated per-group (G1..G4) features to team possession in each
+  5‑minute window.
+
+Inputs (directory of pre-built game folders):
+- For each game date, a folder containing per-player CSVs named like
+  `merged_features_<POS>_<ID>.csv` representing independent 5‑minute windows of physical features.
+- Optionally `poss.csv` giving ground-truth possession per window.
+
+Feature building:
+- Parse position code from filename → map to group (G1..G4).
+- Aggregate per-window features by group (means + counts).
+- Concatenate group aggregates into a single row per window.
+
+Training and validation:
+- Split by rows (or optionally by games) into train/validation sets.
+- Train CatBoostRegressor with reasonable defaults (editable via code/CLI extensions).
+
+Outputs:
+- Saves trained model (joblib), plots of predictions vs truth, and CSVs with predictions/metrics.
+
+Notes:
+- Ensure feature windowing (independent 5‑minute windows) has been done prior to training.
+- Keep POS2GROUP consistent between training and evaluation.
+"""
 # train_possession_grouped_features.py
 # Predict possession with CatBoost using per-group aggregated features
 

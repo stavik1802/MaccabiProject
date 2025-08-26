@@ -1,3 +1,4 @@
+"""Mapping from short/raw feature names to descriptive standardized names."""
 feature_rename_map = {
     "chunk": "chunk",
     "inst_dist_m_sum": "instantaneous_distance_meters_sum",

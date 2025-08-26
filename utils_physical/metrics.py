@@ -1,3 +1,4 @@
+"""Metric helpers to compute MAE, RMSE, and R2 for single- or multi-target predictions."""
 import numpy as np
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 
