@@ -3,55 +3,55 @@ from pathlib import Path
 import sys
 # ✅ Fill this dictionary with your player name → code mapping
 player_code_dict = {
-        "Lior Refaelov": "AM_22", # rephaelov LEADER
+        "Lior Refaelov": "AM_22", 
         "L. Refaelov": "AM_22",
-        "Dia Saba": "AM_21", #Sabia TERRORIST
-        "D. Saba": "AM_21", #Sabia TERRORIST
-        "Sean Goldberg": "CB_2", #goldberg NOTHING TO SAY
-        "S. Goldberg": "CB_2", #goldberg NOTHING TO SAY
-        "Abdoulaye Seck": "CB_3", #seck BLACK
+        "Dia Saba": "AM_21", 
+        "D. Saba": "AM_21", 
+        "Sean Goldberg": "CB_2", 
+        "S. Goldberg": "CB_2", 
+        "Abdoulaye Seck": "CB_3", 
         "A. Seck": "CB_3",
-        "Oleksandr Syrota": "CB_5", #syrota WAR GUY
-        "O. Syrota": "CB_5", #syrota WAR GUY
-        "Dean David": "CF_34", #david OFFSIDE
-        "D. David": "CF_34", #david OFFSIDE
-        "Frantzdy Pierrot": "CF_37", #pierrot NOT TECHNICH
+        "Oleksandr Syrota": "CB_5", 
+        "O. Syrota": "CB_5", 
+        "Dean David": "CF_34", 
+        "D. David": "CF_34",
+        "Frantzdy Pierrot": "CF_37", 
         "F. Pierrot": "CF_37",
-        "Ali Mohamed": "DM_15", #mohammad LIKE HIM
-        "A. Mohamed": "DM_15", #mohammad LIKE HIM
-        "Ethane Azoulay": "DM_16", #azulay, VERY SHIT
-        "E. Azoulay": "DM_16", #azulay, VERY SHIT
-        "Kenny Saief": "LM_28", #Kenny Saief, GOOD ARABIC
-        "K. Saief": "LM_28", #Kenny Saief, GOOD ARABIC
-        "Iyad Khalaili": "RW_25", #Khalaili NOT GOOD LIKE HIS BROTHER
+        "Ali Mohamed": "DM_15", 
+        "A. Mohamed": "DM_15", 
+        "Ethane Azoulay": "DM_16", 
+        "E. Azoulay": "DM_16", 
+        "Kenny Saief": "LM_28", 
+        "K. Saief": "LM_28", 
+        "Iyad Khalaili": "RW_25", 
         "I. Khalaili": "RW_25",
-        "Ilay Feingold": "RB_8", #Feingold AMERICAN
+        "Ilay Feingold": "RB_8", 
         "I. Feingold": "RB_8",
-        "Dolev Haziza": "LW_29", #HAZIZA BAD
+        "Dolev Haziza": "LW_29", 
         "D. Haziza": "LW_29",
-        "Gadi Kinda": "AM_20", #KINDA RIP
-        "G. Kinda": "AM_20", #KINDA RIP
-        "Mahmoud Jaber": "CM_18",#JABBER ARABIC
-        "M. Jaber": "CM_18",#JABBER ARABIC
-        "Liam Hermesh": "DM_17", #HERMESH WHO?
-        "L. Hermesh": "DM_17", #HERMESH WHO?
-        "Vital Nsimba": "LB_12", #NSIMBA BYE AND NEVER COME BACK
+        "Gadi Kinda": "AM_20", 
+        "G. Kinda": "AM_20", 
+        "Mahmoud Jaber": "CM_18",
+        "M. Jaber": "CM_18",
+        "Liam Hermesh": "DM_17", 
+        "L. Hermesh": "DM_17", 
+        "Vital Nsimba": "LB_12", 
         "V. Nsimba": "LB_12",
-        "Omer David Dahan": "CF_35", #DAHAN WHO?
+        "Omer David Dahan": "CF_35", 
         "O. D. Dahan": "CF_35",
-        "Erik Shuranov": "CF_38", # SHURANOV SHIT
+        "Erik Shuranov": "CF_38", 
         "E. Shuranov": "CF_38",
-        "Pedrao": "CB_6" , #PEDRAO BAD KNEES
-        "Mathias Nahuel": "LW_30", #NAHUEL FLOP
+        "Pedrao": "CB_6" , 
+        "Mathias Nahuel": "LW_30", 
         "M. Nahuel": "LW_30",
-        "Maor Kandil": "RB_11", #KANDIL
+        "Maor Kandil": "RB_11", 
         "M. Kandil": "RB_11",
-        "Xander Severina": "RW_24", #SAVERINA
-        "X. Severina": "RW_24", #SAVERINA
-        "Ilay Hajaj": "RM_23", # HAGAG ALWAYS INJURED
+        "Xander Severina": "RW_24", 
+        "X. Severina": "RW_24", 
+        "Ilay Hajaj": "RM_23", 
         "I. Hajaj": "RM_23",
-        "Roey Elimelech": "RB_10", #ELIMELECH
-        "R. Elimelech": "RB_10", #ELIMELECH
+        "Roey Elimelech": "RB_10", 
+        "R. Elimelech": "RB_10", 
         "D. Sundgren": "RB_9",
         "Daniel Sundgren": "RB_9",
         "Guy Melamed": "CF_36",
@@ -84,8 +84,7 @@ player_code_dict = {
         "D. Lesovoy": "LW_47",
         "Ziv Ben Shimol" :"AM_44",
         "Z. B. Shimol": "AM_44"
-        # CB_4 TOMER LANS
-        #sharif kayuf the worst gk in the world
+
 }
 
 def replace_players_in_folder(folder_path):
